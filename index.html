@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spatra Media Portfolio</title>
+    <style>
+        /* --- RESET & VARIABLES --- */
+        :root {
+            --primary: #00e5ff; /* Cyan Neon */
+            --primary-dark: #00b8cc;
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #b0b0b0;
+            --danger: #ff5252;
+            --success: #69f0ae;
+            --radius: 12px;
+            --nav-height: 60px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding-bottom: 80px; /* Space for bottom nav */
+            overflow-x: hidden;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1, h2, h3 { font-weight: 700; margin-bottom: 0.5rem; }
+        h1 { font-size: 1.8rem; background: linear-gradient(45deg, var(--primary), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { line-height: 1.5; color: var(--text-muted); font-size: 0.95rem; }
+        .small { font-size: 0.8rem; }
+
+        /* --- LAYOUT UTILS --- */
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .hidden { display: none !important; }
+        .flex { display: flex; align-items: center; }
+        .flex-col { flex-direction: column; }
+        .justify-between { justify-content: space-between; }
+        .gap-10 { gap: 10px; }
+        .grid { display: grid; gap: 15px; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .mt-20 { margin-top: 20px; }
+        .mb-20 { margin-bottom: 20px; }
+
+        /* --- COMPONENTS --- */
+        .btn {
+            background: var(--primary); color: #000; border: none; padding: 12px 20px;
+            border-radius: var(--radius); font-weight: 700; cursor: pointer; width: 100%;
+            transition: transform 0.2s, background 0.2s; text-align: center; display: block; text-decoration: none;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; }
+
+        .card {
+            background: var(--bg-card); border-radius: var(--radius); overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid #333;
+        }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; color: var(--text-muted); font-size: 0.9rem; }
+        .input-control {
+            width: 100%; background: #2a2a2a; border: 1px solid #444; color: #fff;
+            padding: 12px; border-radius: var(--radius); outline: none; transition: border 0.3s;
+        }
+        .input-control:focus { border-color: var(--primary); }
+
+        /* --- HEADER --- */
+        header {
+            position: sticky; top: 0; z-index: 100; background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px); padding: 15px 20px; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-weight: 800; letter-spacing: 1px; color: var(--text-main); }
+        .user-badge { background: #333; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; color: var(--primary); }
+
+        /* --- SECTIONS --- */
+        /* Auth */
+        .auth-box { max-width: 400px; margin: 40px auto; padding: 30px; text-align: center; }
+        .auth-toggle { color: var(--primary); cursor: pointer; text-decoration: underline; margin-top: 10px; display: block; }
+
+        /* Portfolio Grid */
+        .portfolio-item { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 1/1; }
+        .portfolio-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+        .portfolio-item:hover img { transform: scale(1.1); }
+        .portfolio-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 15px; transform: translateY(100%); transition: transform 0.3s;
+        }
+        .portfolio-item:hover .portfolio-overlay { transform: translateY(0); }
+
+        /* Briefs */
+        .brief-item { padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
+        .brief-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .status-open { background: rgba(105, 240, 174, 0.2); color: var(--success); }
+        .status-closed { background: rgba(255, 82, 82, 0.2); color: var(--danger); }
+
+        /* Dashboard Tabs */
+        .dash-nav { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .dash-tab {
+            padding: 8px 16px; background: #2a2a2a; border-radius: 20px; color: #aaa; cursor: pointer; white-space: nowrap;
+        }
+        .dash-tab.active { background: var(--primary); color: #000; font-weight: bold; }
+
+        /* Floating Action Button (FAB) for upload */
+        .fab {
+            position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px;
+            background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.4); font-size: 24px; color: #000; cursor: pointer; z-index: 90;
+        }
+
+        /* --- NAVIGATION --- */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: #1a1a1a; border-top: 1px solid #333;
+            display: flex; justify-content: space-around; padding: 10px 0; z-index: 100;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #666; text-decoration: none; font-size: 0.75rem; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { font-size: 1.2rem; margin-bottom: 4px; }
+
+        /* --- MODALS & TOASTS --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+            z-index: 200; display: flex; justify-content: center; align-items: center; padding: 20px;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--bg-card); padding: 25px; width: 100%; max-width: 500px; border-radius: var(--radius);
+            max-height: 90vh; overflow-y: auto; position: relative;
+        }
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 1.5rem; cursor: pointer; color: #fff; }
+
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: #333; color: #fff; padding: 12px 24px; border-radius: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 300; transition: transform 0.4s; display: flex; align-items: center; gap: 10px; border: 1px solid #444;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast-success { border-color: var(--success); color: var(--success); }
+        .toast-error { border-color: var(--danger); color: var(--danger); }
+
+        /* Responsive Grid */
+        @media (min-width: 600px) {
+            .grid-2 { grid-template-columns: repeat(3, 1fr); }
+            .container { padding: 40px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header id="main-header">
+        <div class="logo">SPATRA MEDIA</div>
+        <div id="user-display" class="hidden">
+            <span class="user-badge" id="username-badge">Member</span>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="container">
+        
+        <!-- SECTION: PUBLIC HOME -->
+        <section id="section-home">
+            <div class="mt-20 mb-20">
+                <h2>Karya Unggulan</h2>
+                <p>Pilihan terbaik dari portofolio member kami.</p>
+            </div>
+            <div class="grid grid-2" id="public-featured-grid">
+                <!-- Javascript will populate this -->
+                <div class="card" style="height: 200px; display:flex; align-items:center; justify-content:center; color:#555;">Memuat...</div>
+            </div>
+
+            <div class="mt-20 mb-20">
+                <h2>Brief Aktif (Briev)</h2>
+                <p>Sajian utama aktivitas & tugas yang tersedia saat ini.</p>
+            </div>
+            <div id="public-brief-list">
+                <!-- Javascript will populate this -->
+            </div>
+        </section>
+
+        <!-- SECTION: AUTH (LOGIN/REGISTER) -->
+        <section id="section-auth" class="hidden">
+            <div class="card auth-box">
+                <h2 id="auth-title">Login Member</h2>
+                <p class="mb-20">Masuk untuk mengelola portofolio Anda.</p>
+                
+                <form id="auth-form">
+                    <div class="input-group">
+                        <label>Username</label>
+                        <input type="text" id="auth-username" class="input-control" placeholder="Contoh: andi" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Password</label>
+                        <input type="password" id="auth-password" class="input-control" placeholder="******" required>
+                    </div>
+                    <!-- Register Extra Field -->
+                    <div id="register-fields" class="hidden">
+                        <div class="input-group">
+                            <label>Ulangi Password</label>
+                            <input type="password" id="auth-confirm-pass" class="input-control">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="auth-btn-submit">Masuk</button>
+                </form>
+
+                <span class="auth-toggle" id="toggle-auth-mode">Belum punya akun? Daftar disini</span>
+            </div>
+        </section>
+
+        <!-- SECTION: DASHBOARD (MEMBER) -->
+        <section id="section-dashboard" class="hidden">
+            <div class="dash-nav">
+                <div class="dash-tab active" onclick="switchDashTab('my-portfolio')">Portofolio Saya</div>
+                <div class="dash-tab" onclick="switchDashTab('active-briefs')">Brief Tugas</div>
+            </div>
+
+            <!-- Tab: My Portfolio -->
+            <div id="dash-content-my-portfolio">
+                <div class="grid grid-2" id="my-portfolio-grid">
+                    <!-- User's images -->
+                </div>
+                <div id="empty-portfolio-msg" class="hidden" style="text-align:center; padding:40px; color:#555;">
+                    Belum ada karya. Klik tombol + untuk mengunggah.
+                </div>
+            </div>
+
+            <!-- Tab: Active Briefs -->
+            <div id="dash-content-active-briefs" class="hidden">
+                <div id="member-brief-list">
+                    <!-- Briefs with upload functionality -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FLOATING ACTION BUTTON (Upload) -->
+    <div id="fab-upload" class="fab hidden" onclick="openUploadModal()">+</div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" onclick="navigateTo('home')">
+            <span class="nav-icon">🏠</span>
+            <span>Beranda</span>
+        </a>
+        <a href="#" class="nav-item" onclick="navigateTo('auth')" id="nav-auth">
+            <span class="nav-icon">🔒</span>
+            <span>Masuk</span>
+        </a>
+        <a href="#" class="nav-item hidden" id="nav-dashboard" onclick="navigateTo('dashboard')">
+            <span class="nav-icon">👤</span>
+            <span>Area Saya</span>
+        </a>
+    </nav>
+
+    <!-- MODAL: UPLOAD IMAGE -->
+    <div class="modal-overlay" id="modal-upload">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('modal-upload')">&times;</span>
+            <h3>Unggah Karya</h3>
+            <form id="upload-form" class="mt-20">
+                <div class="input-group">
+                    <label>Judul Karya</label>
+                    <input type="text" id="img-title" class="input-control" required>
+                </div>
+                <div class="input-group">
+                    <label>Deskripsi Singkat</label>
+                    <textarea id="img-desc" class="input-control" rows="3"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>File Gambar</label>
+                    <input type="file" id="img-file" class="input-control" accept="image/*" required>
+                </div>
+                <button type="submit" class="btn">Kirim Karya</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: VIEW IMAGE -->
+    <div class="modal-overlay" id="modal-view-image">
+        <div class="modal-content" style="background:transparent; box-shadow:none; max-width:600px;">
+            <span class="close-modal" onclick="closeModal('modal-view-image')" style="color:#fff; top:-30px; right:0;">&times;</span>
+            <img id="view-img-element" src="" style="width:100%; border-radius:var(--radius); margin-bottom:15px;">
+            <h3 id="view-img-title" style="color:#fff;">Title</h3>
+            <p id="view-img-desc" style="color:#ddd;">Desc</p>
+            
+            <!-- Edit/Delete Controls (Only for owner) -->
+            <div id="view-img-controls" class="hidden mt-20 flex gap-10">
+                <button class="btn btn-outline" style="flex:1; border-color:var(--danger); color:var(--danger);" onclick="deleteCurrentImage()">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SUBMIT BRIEF -->
+    <div class="modal-overlay" id="modal-submit-brief">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('modal-submit-brief')">&times;</span>
+            <h3>Kerjakan Brief</h3>
+            <p id="brief-task-desc" class="mb-20 small"></p>
+            <form id="brief-form">
+                <input type="hidden" id="brief-id-hidden">
+                <div class="input-group">
+                    <label>Unggah Hasil Tugas</label>
+                    <input type="file" id="brief-file" class="input-control" required>
+                </div>
+                <div class="input-group">
+                    <label>Catatan / Link</label>
+                    <input type="text" id="brief-note" class="input-control" placeholder="Keterangan tambahan...">
+                </div>
+                <button type="submit" class="btn">Kirim Tugas</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast">
+        <span id="toast-icon">✅</span>
+        <span id="toast-msg">Pesan</span>
+    </div>
+
+    <script>
+        /* --- CONFIGURATION --- */
+        // GANTI DENGAN ID GOOGLE SHEET DAN URL APPS SCRIPT ANDA
+        const CONFIG = {
+            SHEET_ID: '17IjroeWTFueP31pjO--VViZ2YzPj9fyGe-f1S-fei0I', // Contoh: '1BxiM...l6-4'
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz3EPfHIxwFrNkKoS7zhOs2QGDhph3fnftfozrII9QK1V2w7-PbFOLB5J5g63wklFwH/exec', // URL Deploy Web App
+            USE_MOCK_DATA: true // Ubah ke false jika sudah siap connect ke Google Sheet
+        };
+
+        /* --- STATE MANAGEMENT --- */
+        let state = {
+            currentUser: null, // object { username, role }
+            currentSection: 'home',
+            isLoginMode: true,
+            portfolios: [],
+            briefs: []
+        };
+
+        /* --- MOCK DATA (Jika belum connect Google Sheet) --- */
+        const MOCK_PORTFOLIOS = [
+            { id: 1, title: 'Neon Cyberpunk', desc: 'Eksplorasi warna neon di jalanan kota.', img: 'https://picsum.photos/seed/cyber/600/600', author: 'budi' },
+            { id: 2, title: 'Minimalist Nature', desc: 'Fotografi alam dengan gaya bersih.', img: 'https://picsum.photos/seed/nature/600/600', author: 'siti' },
+            { id: 3, title: 'Abstract 3D', desc: 'Render 3D bentuk abstrak.', img: 'https://picsum.photos/seed/abstract/600/600', author: 'budi' },
+        ];
+
+        const MOCK_BRIEFS = [
+            { id: 101, title: 'Desain Poster Event', desc: 'Buat poster ukuran A4 dengan tema musim panas.', deadline: '2023-12-31', status: 'OPEN' },
+            { id: 102, title: 'Logo Redesign', desc: 'Perombakan logo untuk kopi shop.', deadline: '2023-11-20', status: 'CLOSED' }
+        ];
+
+        /* --- INITIALIZATION --- */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Auth Form
+            document.getElementById('toggle-auth-mode').addEventListener('click', () => {
+                state.isLoginMode = !state.isLoginMode;
+                updateAuthUI();
+            });
+
+            document.getElementById('auth-form').addEventListener('submit', handleAuth);
+
+            // Upload Forms
+            document.getElementById('upload-form').addEventListener('submit', handleImageUpload);
+            document.getElementById('brief-form').addEventListener('submit', handleBriefSubmit);
+        }
+
+        /* --- NAVIGATION --- */
+        function navigateTo(section) {
+            // Hide all sections
+            document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            // Show target
+            document.getElementById(`section-${section}`).classList.remove('hidden');
+            state.currentSection = section;
+
+            // Update Nav UI
+            if(section === 'home') {
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
+                renderPublicHome();
+            } else if (section === 'auth') {
+                // Check if already logged in, redirect to dashboard
+                if(state.currentUser) {
+                    navigateTo('dashboard');
+                    return;
+                }
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
+            } else if (section === 'dashboard') {
+                if(!state.currentUser) {
+                    showToast('Silakan login terlebih dahulu', 'error');
+                    navigateTo('auth');
+                    return;
+                }
+                document.getElementById('nav-dashboard').classList.add('active');
+                renderDashboard();
+            }
+        }
+
+        function switchDashTab(tabName) {
+            document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+            // Find clicked tab (simple way based on text or index, here simplified)
+            event.target.classList.add('active');
+
+            document.getElementById('dash-content-my-portfolio').classList.add('hidden');
+            document.getElementById('dash-content-active-briefs').classList.add('hidden');
+
+            document.getElementById(`dash-content-${tabName}`).classList.remove('hidden');
+
+            if(tabName === 'my-portfolio') {
+                document.getElementById('fab-upload').classList.remove('hidden');
+            } else {
+                document.getElementById('fab-upload').classList.add('hidden');
+            }
+        }
+
+        /* --- DATA HANDLING (MOCK + GOOGLE SHEETS LOGIC) --- */
+        async function loadData() {
+            if (CONFIG.USE_MOCK_DATA) {
+                // Simulate network delay
+                setTimeout(() => {
+                    state.portfolios = [...MOCK_PORTFOLIOS];
+                    state.briefs = [...MOCK_BRIEFS];
+                    renderPublicHome();
+                }, 500);
+            } else {
+                // REAL GOOGLE SHEETS IMPLEMENTATION (Gviz)
+                try {
+                    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Portfolio`;
+                    const response = await fetch(url);
+                    const text = await response.text();
+                    const json = JSON.parse(text.substr(47).slice(0, -2)); // Parse gviz format
+                    const rows = json.table.rows;
+                    
+                    state.portfolios = rows.map((r, index) => ({
+                        id: index + 1,
+                        title: r.c[0]?.v || 'Untitled',
+                        desc: r.c[1]?.v || '',
+                        img: r.c[2]?.v || 'https://picsum.photos/200',
+                        author: r.c[3]?.v || 'unknown'
+                    }));
+
+                    // Similar logic for Briefs...
+                    renderPublicHome();
+                } catch (error) {
+                    console.error("Gagal mengambil data dari Google Sheet", error);
+                    showToast("Gagal memuat data server", "error");
+                    // Fallback to mock
+                    state.portfolios = [...MOCK_PORTFOLIOS];
+                    state.briefs = [...MOCK_BRIEFS];
+                    renderPublicHome();
+                }
+            }
+        }
+
+        function renderPublicHome() {
+            // Render Featured (Random 3 for demo)
+            const grid = document.getElementById('public-featured-grid');
+            grid.innerHTML = state.portfolios.slice(0, 6).map(p => `
+                <div class="portfolio-item card" onclick="viewImage(${p.id})">
+                    <img src="${p.img}" loading="lazy" alt="${p.title}">
+                    <div class="portfolio-overlay">
+                        <h4 style="color:var(--primary)">${p.title}</h4>
+                        <p class="small">${p.author}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render Public Briefs
+            const briefList = document.getElementById('public-brief-list');
+            briefList.innerHTML = state.briefs.map(b => `
+                <div class="card brief-item">
+                    <div class="flex justify-between mb-20">
+                        <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
+                        <span class="small text-muted">DL: ${b.deadline}</span>
+                    </div>
+                    <h3>${b.title}</h3>
+                    <p>${b.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderDashboard() {
+            const myGrid = document.getElementById('my-portfolio-grid');
+            const myPortfolio = state.portfolios.filter(p => p.author === state.currentUser.username);
+
+            if (myPortfolio.length === 0) {
+                myGrid.innerHTML = '';
+                document.getElementById('empty-portfolio-msg').classList.remove('hidden');
+            } else {
+                document.getElementById('empty-portfolio-msg').classList.add('hidden');
+                myGrid.innerHTML = myPortfolio.map(p => `
+                    <div class="portfolio-item card" onclick="viewImage(${p.id}, true)">
+                        <img src="${p.img}" loading="lazy">
+                        <div class="portfolio-overlay">
+                            <h4>${p.title}</h4>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Render Briefs for Member (with upload button)
+            const briefContainer = document.getElementById('member-brief-list');
+            briefContainer.innerHTML = state.briefs.map(b => `
+                <div class="card brief-item">
+                    <div class="flex justify-between mb-20">
+                        <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
+                        <span class="small">${b.deadline}</span>
+                    </div>
+                    <h3>${b.title}</h3>
+                    <p class="small mb-20">${b.desc}</p>
+                    ${b.status === 'OPEN' ? `<button class="btn btn-sm" onclick="openBriefModal(${b.id}, '${b.title}')">Upload Hasil</button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        /* --- AUTHENTICATION --- */
+        function updateAuthUI() {
+            const title = document.getElementById('auth-title');
+            const btn = document.getElementById('auth-btn-submit');
+            const extra = document.getElementById('register-fields');
+            const toggle = document.getElementById('toggle-auth-mode');
+
+            if (state.isLoginMode) {
+                title.innerText = "Login Member";
+                btn.innerText = "Masuk";
+                extra.classList.add('hidden');
+                toggle.innerText = "Belum punya akun? Daftar disini";
+            } else {
+                title.innerText = "Pendaftaran Member";
+                btn.innerText = "Daftar";
+                extra.classList.remove('hidden');
+                toggle.innerText = "Sudah punya akun? Login disini";
+            }
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            const u = document.getElementById('auth-username').value;
+            const p = document.getElementById('auth-password').value;
+
+            if(state.isLoginMode) {
+                // Login Logic (Simple simulation)
+                if(u.length > 0) {
+                    state.currentUser = { username: u, role: 'member' };
+                    onLoginSuccess();
+                } else {
+                    showToast('Username tidak boleh kosong', 'error');
+                }
+            } else {
+                // Register Logic
+                const cp = document.getElementById('auth-confirm-pass').value;
+                if(p !== cp) {
+                    showToast('Password tidak cocok', 'error');
+                    return;
+                }
+                // In real app, send to Google Apps Script to add to Users sheet
+                state.currentUser = { username: u, role: 'member' };
+                showToast('Pendaftaran Berhasil!', 'success');
+                onLoginSuccess();
+            }
+        }
+
+        function onLoginSuccess() {
+            showToast(`Selamat datang, ${state.currentUser.username}`, 'success');
+            document.getElementById('username-badge').innerText = state.currentUser.username;
+            document.getElementById('user-display').classList.remove('hidden');
+            
+            // Swap Nav Items
+            document.getElementById('nav-auth').classList.add('hidden');
+            document.getElementById('nav-dashboard').classList.remove('hidden');
+            
+            navigateTo('dashboard');
+        }
+
+        function logout() {
+            state.currentUser = null;
+            document.getElementById('user-display').classList.add('hidden');
+            document.getElementById('nav-auth').classList.remove('hidden');
+            document.getElementById('nav-dashboard').classList.add('hidden');
+            navigateTo('home');
+        }
+
+        /* --- INTERACTIONS: UPLOAD & EDIT --- */
+        let currentViewingId = null;
+
+        function openUploadModal() {
+            document.getElementById('modal-upload').classList.add('open');
+        }
+
+        async function handleImageUpload(e) {
+            e.preventDefault();
+            const title = document.getElementById('img-title').value;
+            const desc = document.getElementById('img-desc').value;
+            const fileInput = document.getElementById('img-file');
+            
+            if(fileInput.files && fileInput.files[0]) {
+                // Simulasi Upload (Base64) untuk demo
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const base64Img = e.target.result; // Warning: Large images will fail in real Sheets
+
+                    const newPort = {
+                        id: Date.now(),
+                        title: title,
+                        desc: desc,
+                        img: base64Img,
+                        author: state.currentUser.username
+                    };
+
+                    // REAL WORLD: Kirim via POST ke Apps Script
+                    if (!CONFIG.USE_MOCK_DATA) {
+                        await sendToGoogleSheets(newPort);
+                    } else {
+                        // Mock delay
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+
+                    state.portfolios.unshift(newPort);
+                    renderDashboard();
+                    closeModal('modal-upload');
+                    showToast('Karya berhasil diunggah!', 'success');
+                    e.target.reset();
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
+        function viewImage(id, isOwner = false) {
+            const item = state.portfolios.find(p => p.id === id);
+            if(!item) return;
+
+            currentViewingId = id;
+            document.getElementById('view-img-element').src = item.img;
+            document.getElementById('view-img-title').innerText = item.title;
+            document.getElementById('view-img-desc').innerText = item.desc;
+
+            const controls = document.getElementById('view-img-controls');
+            
+            // Cek apakah ini milik user yang sedang login
+            const isMyImage = state.currentUser && (item.author === state.currentUser.username);
+            
+            if(isMyImage) {
+                controls.classList.remove('hidden');
+            } else {
+                controls.classList.add('hidden');
+            }
+
+            document.getElementById('modal-view-image').classList.add('open');
+        }
+
+        function deleteCurrentImage() {
+            if(!confirm('Yakin ingin menghapus karya ini?')) return;
+
+            // Real World: Send DELETE request to Apps Script
+            if(!CONFIG.USE_MOCK_DATA) {
+                // sendDeleteToSheets(currentViewingId);
+            }
+
+            state.portfolios = state.portfolios.filter(p => p.id !== currentViewingId);
+            renderDashboard(); // Re-render grid
+            closeModal('modal-view-image');
+            showToast('Karya dihapus', 'success');
+        }
+
+        /* --- BRIEF HANDLING --- */
+        function openBriefModal(id, title) {
+            document.getElementById('brief-id-hidden').value = id;
+            document.getElementById('brief-task-desc').innerText = `Mengerjakan: ${title}`;
+            document.getElementById('modal-submit-brief').classList.add('open');
+        }
+
+        function handleBriefSubmit(e) {
+            e.preventDefault();
+            // Logic upload brief
+            showToast('Tugas berhasil dikirim!', 'success');
+            closeModal('modal-submit-brief');
+            e.target.reset();
+        }
+
+        /* --- UTILS --- */
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const text = document.getElementById('toast-msg');
+
+            toast.className = `toast toast-${type} show`;
+            icon.innerText = type === 'success' ? '✅' : '⚠️';
+            text.innerText = msg;
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        async function sendToGoogleSheets(data) {
+            // Contoh Implementasi Fetch ke Google Apps Script
+            /* 
+            const formData = new FormData();
+            formData.append('action', 'create');
+            formData.append('data', JSON.stringify(data));
+            
+            try {
+                await fetch(CONFIG.SCRIPT_URL, { method: 'POST', body: formData });
+            } catch (err) {
+                console.error(err);
+            }
+            */
+        }
+
+    </script>
+</body>
+</html>
