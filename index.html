@@ -331,7 +331,7 @@
         // GANTI DENGAN ID GOOGLE SHEET DAN URL APPS SCRIPT ANDA
         const CONFIG = {
             SHEET_ID: '17IjroeWTFueP31pjO--VViZ2YzPj9fyGe-f1S-fei0I', // Contoh: '1BxiM...l6-4'
-            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzl7I4EpAnzcxr5oJodBosdE5uFn14YeSbgyNDtk68isUScUaJK_rgQseTC5eAko0m8/exec', // URL Deploy Web App
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbys3OF2qNKjZfTuSLbPMg_ve73ZlKSoy9sC8VfwRMRkDw3GUx5I1aXCUtTFZo3SHt8S/exec', // URL Deploy Web App
             USE_MOCK_DATA: false // Ubah ke false jika sudah siap connect ke Google Sheet
         };
 // Fungsi Helper untuk kirim data ke Google Script
@@ -440,42 +440,53 @@ async function postData(data) {
 
         /* --- DATA HANDLING (MOCK + GOOGLE SHEETS LOGIC) --- */
         async function loadData() {
-            if (CONFIG.USE_MOCK_DATA) {
-                // Simulate network delay
-                setTimeout(() => {
-                    state.portfolios = [...MOCK_PORTFOLIOS];
-                    state.briefs = [...MOCK_BRIEFS];
-                    renderPublicHome();
-                }, 500);
-            } else {
-                // REAL GOOGLE SHEETS IMPLEMENTATION (Gviz)
-                try {
-                    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Portfolio`;
-                    const response = await fetch(url);
-                    const text = await response.text();
-                    const json = JSON.parse(text.substr(47).slice(0, -2)); // Parse gviz format
-                    const rows = json.table.rows;
-                    
-                    state.portfolios = rows.map((r, index) => ({
-                        id: index + 1,
-                        title: r.c[0]?.v || 'Untitled',
-                        desc: r.c[1]?.v || '',
-                        img: r.c[2]?.v || 'https://picsum.photos/200',
-                        author: r.c[3]?.v || 'unknown'
-                    }));
+    if (CONFIG.USE_MOCK_DATA) {
+        // ... bagian MOCK data biarkan saja ...
+        state.portfolios = [...MOCK_PORTFOLIOS];
+        state.briefs = [...MOCK_BRIEFS];
+        renderPublicHome();
+    } else {
+        // --- REAL CONNECTION ---
+        
+        // 1. Ambil Data Portfolio
+        const portUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Portfolio`;
+        try {
+            const resPort = await fetch(portUrl);
+            const txtPort = await resPort.text();
+            const jsonPort = JSON.parse(txtPort.substr(47).slice(0, -2));
+            const rowsPort = jsonPort.table.rows;
+            
+            state.portfolios = rowsPort.map((r, i) => ({
+                id: r.c[0]?.v || i, // ID dari kolom 1
+                title: r.c[2]?.v || 'Untitled', // Title kolom 3 (kolom 2 itu timestamp)
+                desc: r.c[3]?.v || '',
+                img: r.c[4]?.v || 'https://picsum.photos/200',
+                author: r.c[5]?.v || 'unknown'
+            }));
 
-                    // Similar logic for Briefs...
-                    renderPublicHome();
-                } catch (error) {
-                    console.error("Gagal mengambil data dari Google Sheet", error);
-                    showToast("Gagal memuat data server", "error");
-                    // Fallback to mock
-                    state.portfolios = [...MOCK_PORTFOLIOS];
-                    state.briefs = [...MOCK_BRIEFS];
-                    renderPublicHome();
-                }
-            }
-        }
+        } catch (e) { console.error("Gagal load Portfolio", e); }
+
+        // 2. Ambil Data Briefs (BARU)
+        const briefUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Briefs`;
+        try {
+            const resBrief = await fetch(briefUrl);
+            const txtBrief = await resBrief.text();
+            const jsonBrief = JSON.parse(txtBrief.substr(47).slice(0, -2));
+            const rowsBrief = jsonBrief.table.rows;
+            
+            state.briefs = rowsBrief.map((r, i) => ({
+                id: r.c[0]?.v || i,
+                title: r.c[1]?.v || 'Tanpa Judul',
+                desc: r.c[2]?.v || '',
+                deadline: r.c[3]?.v || '',
+                status: r.c[4]?.v || 'OPEN'
+            }));
+
+        } catch (e) { console.error("Gagal load Briefs", e); }
+
+        renderPublicHome(); // Render ulang halaman
+    }
+}
 
         function renderPublicHome() {
             // Render Featured (Random 3 for demo)
@@ -705,13 +716,44 @@ async function handleAuth(e) {
             document.getElementById('modal-submit-brief').classList.add('open');
         }
 
-        function handleBriefSubmit(e) {
-            e.preventDefault();
-            // Logic upload brief
-            showToast('Tugas berhasil dikirim!', 'success');
-            closeModal('modal-submit-brief');
-            e.target.reset();
-        }
+    async function handleBriefSubmit(e) {
+    e.preventDefault();
+    
+    const briefId = document.getElementById('brief-id-hidden').value;
+    const briefTitle = document.getElementById('brief-task-desc').innerText.replace('Mengerjakan: ', '');
+    const note = document.getElementById('brief-note').value;
+    const fileInput = document.getElementById('brief-file');
+
+    if (fileInput.files && fileInput.files[0]) {
+        showToast('Mengirim tugas...', 'success');
+
+        const reader = new FileReader();
+        reader.onload = async function(ev) {
+            const base64File = ev.target.result;
+
+            // Kirim ke GAS
+            const result = await postData({
+                action: 'submit_brief',
+                briefId: briefId,
+                briefTitle: briefTitle,
+                submittedBy: state.currentUser.username,
+                file: base64File,
+                note: note
+            });
+
+            if(result.status === 'success') {
+                showToast(result.message, 'success');
+                closeModal('modal-submit-brief');
+                e.target.reset();
+            } else {
+                showToast('Gagal: ' + result.message, 'error');
+            }
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        showToast('Pilih file hasil kerja dulu', 'error');
+    }
+}
 
         /* --- UTILS --- */
         function closeModal(id) {
