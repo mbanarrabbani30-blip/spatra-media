@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -331,10 +331,23 @@
         // GANTI DENGAN ID GOOGLE SHEET DAN URL APPS SCRIPT ANDA
         const CONFIG = {
             SHEET_ID: '17IjroeWTFueP31pjO--VViZ2YzPj9fyGe-f1S-fei0I', // Contoh: '1BxiM...l6-4'
-            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz3EPfHIxwFrNkKoS7zhOs2QGDhph3fnftfozrII9QK1V2w7-PbFOLB5J5g63wklFwH/exec', // URL Deploy Web App
-            USE_MOCK_DATA: true // Ubah ke false jika sudah siap connect ke Google Sheet
+            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzl7I4EpAnzcxr5oJodBosdE5uFn14YeSbgyNDtk68isUScUaJK_rgQseTC5eAko0m8/exec', // URL Deploy Web App
+            USE_MOCK_DATA: false // Ubah ke false jika sudah siap connect ke Google Sheet
         };
-
+// Fungsi Helper untuk kirim data ke Google Script
+async function postData(data) {
+    try {
+        const response = await fetch(CONFIG.SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        const json = await response.json();
+        return json;
+    } catch (error) {
+        console.error("Connection Error:", error);
+        return { status: "error", message: "Gagal terhubung ke server. Cek koneksi internet." };
+    }
+}
         /* --- STATE MANAGEMENT --- */
         let state = {
             currentUser: null, // object { username, role }
@@ -545,32 +558,40 @@
             }
         }
 
-        function handleAuth(e) {
-            e.preventDefault();
-            const u = document.getElementById('auth-username').value;
-            const p = document.getElementById('auth-password').value;
+       ////handleauth----
+async function handleAuth(e) {
+    e.preventDefault();
+    const u = document.getElementById('auth-username').value;
+    const p = document.getElementById('auth-password').value;
 
-            if(state.isLoginMode) {
-                // Login Logic (Simple simulation)
-                if(u.length > 0) {
-                    state.currentUser = { username: u, role: 'member' };
-                    onLoginSuccess();
-                } else {
-                    showToast('Username tidak boleh kosong', 'error');
-                }
-            } else {
-                // Register Logic
-                const cp = document.getElementById('auth-confirm-pass').value;
-                if(p !== cp) {
-                    showToast('Password tidak cocok', 'error');
-                    return;
-                }
-                // In real app, send to Google Apps Script to add to Users sheet
-                state.currentUser = { username: u, role: 'member' };
-                showToast('Pendaftaran Berhasil!', 'success');
-                onLoginSuccess();
-            }
+    // Validasi password jika mode register
+    if (!state.isLoginMode) {
+        const cp = document.getElementById('auth-confirm-pass').value;
+        if (p !== cp) {
+            showToast('Password tidak cocok', 'error');
+            return;
         }
+    }
+
+    // Tentukan aksi
+    const actionType = state.isLoginMode ? 'login' : 'register';
+
+    // Kirim ke Google Apps Script
+    const result = await postData({
+        action: actionType,
+        username: u,
+        password: p
+    });
+
+    if (result.status === 'success') {
+        showToast(result.message, 'success');
+        state.currentUser = { username: u, role: 'member' };
+        onLoginSuccess();
+    } else {
+        showToast(result.message, 'error');
+    }
+}
+/// end handleaut
 
         function onLoginSuccess() {
             showToast(`Selamat datang, ${state.currentUser.username}`, 'success');
@@ -598,44 +619,43 @@
         function openUploadModal() {
             document.getElementById('modal-upload').classList.add('open');
         }
+//=============upload
+      async function handleImageUpload(e) {
+    e.preventDefault();
+    const title = document.getElementById('img-title').value;
+    const desc = document.getElementById('img-desc').value;
+    const fileInput = document.getElementById('img-file');
+    
+    if(fileInput.files && fileInput.files[0]) {
+        showToast('Sedang mengupload...', 'success'); // Loading sementara
 
-        async function handleImageUpload(e) {
-            e.preventDefault();
-            const title = document.getElementById('img-title').value;
-            const desc = document.getElementById('img-desc').value;
-            const fileInput = document.getElementById('img-file');
-            
-            if(fileInput.files && fileInput.files[0]) {
-                // Simulasi Upload (Base64) untuk demo
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const base64Img = e.target.result; // Warning: Large images will fail in real Sheets
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Img = e.target.result; // Convert gambar ke teks base64
 
-                    const newPort = {
-                        id: Date.now(),
-                        title: title,
-                        desc: desc,
-                        img: base64Img,
-                        author: state.currentUser.username
-                    };
+            const result = await postData({
+                action: 'upload_portfolio',
+                title: title,
+                description: desc,
+                img: base64Img,
+                author: state.currentUser.username
+            });
 
-                    // REAL WORLD: Kirim via POST ke Apps Script
-                    if (!CONFIG.USE_MOCK_DATA) {
-                        await sendToGoogleSheets(newPort);
-                    } else {
-                        // Mock delay
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
-
-                    state.portfolios.unshift(newPort);
-                    renderDashboard();
-                    closeModal('modal-upload');
-                    showToast('Karya berhasil diunggah!', 'success');
-                    e.target.reset();
-                };
-                reader.readAsDataURL(fileInput.files[0]);
+            if (result.status === 'success') {
+                showToast('Karya berhasil diunggah!', 'success');
+                // Refresh data dari Google Sheet
+                await loadData(); 
+                renderDashboard();
+                closeModal('modal-upload');
+                e.target.reset();
+            } else {
+                showToast('Gagal: ' + result.message, 'error');
             }
-        }
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    }
+}
+//---------------end
 
         function viewImage(id, isOwner = false) {
             const item = state.portfolios.find(p => p.id === id);
@@ -660,19 +680,23 @@
             document.getElementById('modal-view-image').classList.add('open');
         }
 
-        function deleteCurrentImage() {
-            if(!confirm('Yakin ingin menghapus karya ini?')) return;
+     async function deleteCurrentImage() {
+    if(!confirm('Yakin ingin menghapus karya ini?')) return;
 
-            // Real World: Send DELETE request to Apps Script
-            if(!CONFIG.USE_MOCK_DATA) {
-                // sendDeleteToSheets(currentViewingId);
-            }
+    const result = await postData({
+        action: 'delete_portfolio',
+        id: currentViewingId
+    });
 
-            state.portfolios = state.portfolios.filter(p => p.id !== currentViewingId);
-            renderDashboard(); // Re-render grid
-            closeModal('modal-view-image');
-            showToast('Karya dihapus', 'success');
-        }
+    if (result.status === 'success') {
+        showToast('Karya dihapus', 'success');
+        await loadData(); // Refresh data
+        renderDashboard();
+        closeModal('modal-view-image');
+    } else {
+        showToast('Gagal menghapus', 'error');
+    }
+}
 
         /* --- BRIEF HANDLING --- */
         function openBriefModal(id, title) {
@@ -726,3 +750,4 @@
     </script>
 </body>
 </html>
+
