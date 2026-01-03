@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -328,26 +328,31 @@
 
     <script>
         /* --- CONFIGURATION --- */
-        // GANTI DENGAN ID GOOGLE SHEET DAN URL APPS SCRIPT ANDA
+        // PERBAIKAN: Ganti dengan ID Google Sheet dan URL Apps Script Anda yang SEBENARNYA
         const CONFIG = {
-            SHEET_ID: '17IjroeWTFueP31pjO--VViZ2YzPj9fyGe-f1S-fei0I', // Contoh: '1BxiM...l6-4'
-            SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbys3OF2qNKjZfTuSLbPMg_ve73ZlKSoy9sC8VfwRMRkDw3GUx5I1aXCUtTFZo3SHt8S/exec', // URL Deploy Web App
-            USE_MOCK_DATA: false // Ubah ke false jika sudah siap connect ke Google Sheet
+            SHEET_ID: 'GANTI_DENGAN_ID_GOOGLE_SHEET_ANDA', // Contoh: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
+            SCRIPT_URL: 'GANTI_DENGAN_URL_APPS_SCRIPT_ANDA', // URL Deploy Web App
+            USE_MOCK_DATA: true // Set ke true untuk testing, false untuk live
         };
-// Fungsi Helper untuk kirim data ke Google Script
-async function postData(data) {
-    try {
-        const response = await fetch(CONFIG.SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-        const json = await response.json();
-        return json;
-    } catch (error) {
-        console.error("Connection Error:", error);
-        return { status: "error", message: "Gagal terhubung ke server. Cek koneksi internet." };
-    }
-}
+
+        // Fungsi Helper untuk kirim data ke Google Script - PERBAIKAN HEADERS
+        async function postData(data) {
+            try {
+                const response = await fetch(CONFIG.SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                const json = await response.json();
+                return json;
+            } catch (error) {
+                console.error("Connection Error:", error);
+                return { status: "error", message: "Gagal terhubung ke server. Cek koneksi internet." };
+            }
+        }
+
         /* --- STATE MANAGEMENT --- */
         let state = {
             currentUser: null, // object { username, role }
@@ -440,79 +445,66 @@ async function postData(data) {
 
         /* --- DATA HANDLING (MOCK + GOOGLE SHEETS LOGIC) --- */
         async function loadData() {
-    if (CONFIG.USE_MOCK_DATA) {
-        // ... bagian MOCK data biarkan saja ...
-        state.portfolios = [...MOCK_PORTFOLIOS];
-        state.briefs = [...MOCK_BRIEFS];
-        renderPublicHome();
-    } else {
-        // --- REAL CONNECTION ---
-        
-        // 1. Ambil Data Portfolio
-        const portUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Portfolio`;
-        try {
-            const resPort = await fetch(portUrl);
-            const txtPort = await resPort.text();
-            const jsonPort = JSON.parse(txtPort.substr(47).slice(0, -2));
-            const rowsPort = jsonPort.table.rows;
-            
-            state.portfolios = rowsPort.map((r, i) => ({
-                id: r.c[0]?.v || i, // ID dari kolom 1
-                title: r.c[2]?.v || 'Untitled', // Title kolom 3 (kolom 2 itu timestamp)
-                desc: r.c[3]?.v || '',
-                img: r.c[4]?.v || 'https://picsum.photos/200',
-                author: r.c[5]?.v || 'unknown'
-            }));
-
-        } catch (e) { console.error("Gagal load Portfolio", e); }
-
-        // 2. Ambil Data Briefs (BARU)
-        const briefUrl = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&sheet=Briefs`;
-        try {
-            const resBrief = await fetch(briefUrl);
-            const txtBrief = await resBrief.text();
-            const jsonBrief = JSON.parse(txtBrief.substr(47).slice(0, -2));
-            const rowsBrief = jsonBrief.table.rows;
-            
-            state.briefs = rowsBrief.map((r, i) => ({
-                id: r.c[0]?.v || i,
-                title: r.c[1]?.v || 'Tanpa Judul',
-                desc: r.c[2]?.v || '',
-                deadline: r.c[3]?.v || '',
-                status: r.c[4]?.v || 'OPEN'
-            }));
-
-        } catch (e) { console.error("Gagal load Briefs", e); }
-
-        renderPublicHome(); // Render ulang halaman
-    }
-}
+            if (CONFIG.USE_MOCK_DATA) {
+                // Gunakan MOCK data
+                state.portfolios = [...MOCK_PORTFOLIOS];
+                state.briefs = [...MOCK_BRIEFS];
+                renderPublicHome();
+            } else {
+                try {
+                    // Load portfolios
+                    const portfolioResponse = await postData({ action: 'get_portfolios' });
+                    if (portfolioResponse.status === 'success') {
+                        state.portfolios = portfolioResponse.data;
+                    }
+                    
+                    // Load briefs
+                    const briefsResponse = await postData({ action: 'get_briefs' });
+                    if (briefsResponse.status === 'success') {
+                        state.briefs = briefsResponse.data;
+                    }
+                    
+                    renderPublicHome();
+                } catch (error) {
+                    console.error("Error loading data:", error);
+                    showToast('Gagal memuat data', 'error');
+                }
+            }
+        }
 
         function renderPublicHome() {
             // Render Featured (Random 3 for demo)
             const grid = document.getElementById('public-featured-grid');
-            grid.innerHTML = state.portfolios.slice(0, 6).map(p => `
-                <div class="portfolio-item card" onclick="viewImage(${p.id})">
-                    <img src="${p.img}" loading="lazy" alt="${p.title}">
-                    <div class="portfolio-overlay">
-                        <h4 style="color:var(--primary)">${p.title}</h4>
-                        <p class="small">${p.author}</p>
+            if (state.portfolios.length > 0) {
+                grid.innerHTML = state.portfolios.slice(0, 6).map(p => `
+                    <div class="portfolio-item card" onclick="viewImage(${p.id})">
+                        <img src="${p.img}" loading="lazy" alt="${p.title}" onerror="this.src='https://via.placeholder.com/300/1e1e1e/00e5ff?text=No+Image'">
+                        <div class="portfolio-overlay">
+                            <h4 style="color:var(--primary)">${p.title}</h4>
+                            <p class="small">${p.author}</p>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            } else {
+                grid.innerHTML = '<div class="card" style="height: 200px; display:flex; align-items:center; justify-content:center; color:#555;">Belum ada karya</div>';
+            }
 
             // Render Public Briefs
             const briefList = document.getElementById('public-brief-list');
-            briefList.innerHTML = state.briefs.map(b => `
-                <div class="card brief-item">
-                    <div class="flex justify-between mb-20">
-                        <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
-                        <span class="small text-muted">DL: ${b.deadline}</span>
+            if (state.briefs.length > 0) {
+                briefList.innerHTML = state.briefs.map(b => `
+                    <div class="card brief-item">
+                        <div class="flex justify-between mb-20">
+                            <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
+                            <span class="small text-muted">DL: ${b.deadline}</span>
+                        </div>
+                        <h3>${b.title}</h3>
+                        <p>${b.desc}</p>
                     </div>
-                    <h3>${b.title}</h3>
-                    <p>${b.desc}</p>
-                </div>
-            `).join('');
+                `).join('');
+            } else {
+                briefList.innerHTML = '<div class="card" style="padding:20px; text-align:center; color:#555;">Belum ada brief aktif</div>';
+            }
         }
 
         function renderDashboard() {
@@ -526,7 +518,7 @@ async function postData(data) {
                 document.getElementById('empty-portfolio-msg').classList.add('hidden');
                 myGrid.innerHTML = myPortfolio.map(p => `
                     <div class="portfolio-item card" onclick="viewImage(${p.id}, true)">
-                        <img src="${p.img}" loading="lazy">
+                        <img src="${p.img}" loading="lazy" onerror="this.src='https://via.placeholder.com/300/1e1e1e/00e5ff?text=No+Image'">
                         <div class="portfolio-overlay">
                             <h4>${p.title}</h4>
                         </div>
@@ -536,17 +528,21 @@ async function postData(data) {
 
             // Render Briefs for Member (with upload button)
             const briefContainer = document.getElementById('member-brief-list');
-            briefContainer.innerHTML = state.briefs.map(b => `
-                <div class="card brief-item">
-                    <div class="flex justify-between mb-20">
-                        <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
-                        <span class="small">${b.deadline}</span>
+            if (state.briefs.length > 0) {
+                briefContainer.innerHTML = state.briefs.map(b => `
+                    <div class="card brief-item">
+                        <div class="flex justify-between mb-20">
+                            <span class="brief-status ${b.status === 'OPEN' ? 'status-open' : 'status-closed'}">${b.status}</span>
+                            <span class="small">${b.deadline}</span>
+                        </div>
+                        <h3>${b.title}</h3>
+                        <p class="small mb-20">${b.desc}</p>
+                        ${b.status === 'OPEN' ? `<button class="btn btn-sm" onclick="openBriefModal(${b.id}, '${b.title}')">Upload Hasil</button>` : ''}
                     </div>
-                    <h3>${b.title}</h3>
-                    <p class="small mb-20">${b.desc}</p>
-                    ${b.status === 'OPEN' ? `<button class="btn btn-sm" onclick="openBriefModal(${b.id}, '${b.title}')">Upload Hasil</button>` : ''}
-                </div>
-            `).join('');
+                `).join('');
+            } else {
+                briefContainer.innerHTML = '<div class="card" style="padding:20px; text-align:center; color:#555;">Belum ada brief</div>';
+            }
         }
 
         /* --- AUTHENTICATION --- */
@@ -569,40 +565,47 @@ async function postData(data) {
             }
         }
 
-       ////handleauth----
-async function handleAuth(e) {
-    e.preventDefault();
-    const u = document.getElementById('auth-username').value;
-    const p = document.getElementById('auth-password').value;
+        async function handleAuth(e) {
+            e.preventDefault();
+            const u = document.getElementById('auth-username').value.trim();
+            const p = document.getElementById('auth-password').value.trim();
 
-    // Validasi password jika mode register
-    if (!state.isLoginMode) {
-        const cp = document.getElementById('auth-confirm-pass').value;
-        if (p !== cp) {
-            showToast('Password tidak cocok', 'error');
-            return;
+            if (!u || !p) {
+                showToast('Username dan password harus diisi', 'error');
+                return;
+            }
+
+            // Validasi password jika mode register
+            if (!state.isLoginMode) {
+                const cp = document.getElementById('auth-confirm-pass').value.trim();
+                if (p !== cp) {
+                    showToast('Password tidak cocok', 'error');
+                    return;
+                }
+            }
+
+            // Tentukan aksi
+            const actionType = state.isLoginMode ? 'login' : 'register';
+
+            try {
+                const result = await postData({
+                    action: actionType,
+                    username: u,
+                    password: p
+                });
+
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    state.currentUser = { username: u, role: result.role || 'member' };
+                    onLoginSuccess();
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Gagal menghubungi server', 'error');
+                console.error('Auth error:', error);
+            }
         }
-    }
-
-    // Tentukan aksi
-    const actionType = state.isLoginMode ? 'login' : 'register';
-
-    // Kirim ke Google Apps Script
-    const result = await postData({
-        action: actionType,
-        username: u,
-        password: p
-    });
-
-    if (result.status === 'success') {
-        showToast(result.message, 'success');
-        state.currentUser = { username: u, role: 'member' };
-        onLoginSuccess();
-    } else {
-        showToast(result.message, 'error');
-    }
-}
-/// end handleaut
 
         function onLoginSuccess() {
             showToast(`Selamat datang, ${state.currentUser.username}`, 'success');
@@ -630,43 +633,60 @@ async function handleAuth(e) {
         function openUploadModal() {
             document.getElementById('modal-upload').classList.add('open');
         }
-//=============upload
-      async function handleImageUpload(e) {
-    e.preventDefault();
-    const title = document.getElementById('img-title').value;
-    const desc = document.getElementById('img-desc').value;
-    const fileInput = document.getElementById('img-file');
-    
-    if(fileInput.files && fileInput.files[0]) {
-        showToast('Sedang mengupload...', 'success'); // Loading sementara
 
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-            const base64Img = e.target.result; // Convert gambar ke teks base64
-
-            const result = await postData({
-                action: 'upload_portfolio',
-                title: title,
-                description: desc,
-                img: base64Img,
-                author: state.currentUser.username
-            });
-
-            if (result.status === 'success') {
-                showToast('Karya berhasil diunggah!', 'success');
-                // Refresh data dari Google Sheet
-                await loadData(); 
-                renderDashboard();
-                closeModal('modal-upload');
-                e.target.reset();
-            } else {
-                showToast('Gagal: ' + result.message, 'error');
+        async function handleImageUpload(e) {
+            e.preventDefault();
+            const title = document.getElementById('img-title').value.trim();
+            const desc = document.getElementById('img-desc').value.trim();
+            const fileInput = document.getElementById('img-file');
+            
+            if (!title) {
+                showToast('Judul karya harus diisi', 'error');
+                return;
             }
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    }
-}
-//---------------end
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast('Pilih gambar terlebih dahulu', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showToast('Ukuran gambar maksimal 5MB', 'error');
+                return;
+            }
+
+            showToast('Sedang mengupload...', 'success');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64Img = e.target.result;
+
+                try {
+                    const result = await postData({
+                        action: 'upload_portfolio',
+                        title: title,
+                        description: desc,
+                        img: base64Img,
+                        author: state.currentUser.username
+                    });
+
+                    if (result.status === 'success') {
+                        showToast('Karya berhasil diunggah!', 'success');
+                        // Refresh data
+                        await loadData();
+                        renderDashboard();
+                        closeModal('modal-upload');
+                        document.getElementById('upload-form').reset();
+                    } else {
+                        showToast('Gagal: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    showToast('Gagal mengupload', 'error');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
 
         function viewImage(id, isOwner = false) {
             const item = state.portfolios.find(p => p.id === id);
@@ -691,69 +711,84 @@ async function handleAuth(e) {
             document.getElementById('modal-view-image').classList.add('open');
         }
 
-     async function deleteCurrentImage() {
-    if(!confirm('Yakin ingin menghapus karya ini?')) return;
+        async function deleteCurrentImage() {
+            if(!confirm('Yakin ingin menghapus karya ini?')) return;
 
-    const result = await postData({
-        action: 'delete_portfolio',
-        id: currentViewingId
-    });
+            try {
+                const result = await postData({
+                    action: 'delete_portfolio',
+                    id: currentViewingId
+                });
 
-    if (result.status === 'success') {
-        showToast('Karya dihapus', 'success');
-        await loadData(); // Refresh data
-        renderDashboard();
-        closeModal('modal-view-image');
-    } else {
-        showToast('Gagal menghapus', 'error');
-    }
-}
+                if (result.status === 'success') {
+                    showToast('Karya dihapus', 'success');
+                    await loadData();
+                    renderDashboard();
+                    closeModal('modal-view-image');
+                } else {
+                    showToast('Gagal menghapus: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showToast('Gagal menghapus', 'error');
+            }
+        }
 
         /* --- BRIEF HANDLING --- */
         function openBriefModal(id, title) {
+            const brief = state.briefs.find(b => b.id == id);
+            if (!brief) return;
+            
             document.getElementById('brief-id-hidden').value = id;
-            document.getElementById('brief-task-desc').innerText = `Mengerjakan: ${title}`;
+            document.getElementById('brief-task-desc').innerText = `Mengerjakan: ${title}\n\n${brief.desc}`;
             document.getElementById('modal-submit-brief').classList.add('open');
         }
 
-    async function handleBriefSubmit(e) {
-    e.preventDefault();
-    
-    const briefId = document.getElementById('brief-id-hidden').value;
-    const briefTitle = document.getElementById('brief-task-desc').innerText.replace('Mengerjakan: ', '');
-    const note = document.getElementById('brief-note').value;
-    const fileInput = document.getElementById('brief-file');
+        async function handleBriefSubmit(e) {
+            e.preventDefault();
+            
+            const briefId = document.getElementById('brief-id-hidden').value;
+            const note = document.getElementById('brief-note').value.trim();
+            const fileInput = document.getElementById('brief-file');
 
-    if (fileInput.files && fileInput.files[0]) {
-        showToast('Mengirim tugas...', 'success');
-
-        const reader = new FileReader();
-        reader.onload = async function(ev) {
-            const base64File = ev.target.result;
-
-            // Kirim ke GAS
-            const result = await postData({
-                action: 'submit_brief',
-                briefId: briefId,
-                briefTitle: briefTitle,
-                submittedBy: state.currentUser.username,
-                file: base64File,
-                note: note
-            });
-
-            if(result.status === 'success') {
-                showToast(result.message, 'success');
-                closeModal('modal-submit-brief');
-                e.target.reset();
-            } else {
-                showToast('Gagal: ' + result.message, 'error');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showToast('Pilih file hasil kerja dulu', 'error');
+                return;
             }
-        };
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        showToast('Pilih file hasil kerja dulu', 'error');
-    }
-}
+
+            const file = fileInput.files[0];
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showToast('Ukuran file maksimal 5MB', 'error');
+                return;
+            }
+
+            showToast('Mengirim tugas...', 'success');
+
+            const reader = new FileReader();
+            reader.onload = async function(ev) {
+                const base64File = ev.target.result;
+
+                try {
+                    const result = await postData({
+                        action: 'submit_brief',
+                        briefId: briefId,
+                        submittedBy: state.currentUser.username,
+                        file: base64File,
+                        note: note
+                    });
+
+                    if(result.status === 'success') {
+                        showToast(result.message, 'success');
+                        closeModal('modal-submit-brief');
+                        e.target.reset();
+                    } else {
+                        showToast('Gagal: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    showToast('Gagal mengirim tugas', 'error');
+                }
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
 
         /* --- UTILS --- */
         function closeModal(id) {
@@ -774,22 +809,6 @@ async function handleAuth(e) {
             }, 3000);
         }
 
-        async function sendToGoogleSheets(data) {
-            // Contoh Implementasi Fetch ke Google Apps Script
-            /* 
-            const formData = new FormData();
-            formData.append('action', 'create');
-            formData.append('data', JSON.stringify(data));
-            
-            try {
-                await fetch(CONFIG.SCRIPT_URL, { method: 'POST', body: formData });
-            } catch (err) {
-                console.error(err);
-            }
-            */
-        }
-
     </script>
 </body>
 </html>
-
